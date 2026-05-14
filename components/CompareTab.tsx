@@ -41,7 +41,7 @@ export function CompareTab({ comp, labelA, labelB, alertMsg, exportFilename }: C
         </Button>
       </div>
 
-      <SinSerieWarning pCount={pSinSerie.length} lCount={lSinSerie.length} />
+      <SinSerieWarning pSinSerie={pSinSerie} lSinSerie={lSinSerie} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <MetricCard
