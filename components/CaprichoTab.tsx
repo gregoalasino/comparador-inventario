@@ -4,54 +4,13 @@ import { useState } from "react"
 import { Download, Search, CheckCircle } from "lucide-react"
 import * as XLSX from "xlsx"
 import { CaprichoResult, CaprichoMatch } from "@/lib/types"
-import { findField } from "@/lib/capricho"
+import { extractExportRow } from "@/lib/capricho"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { CaprichoMatchCard } from "./CaprichoMatchCard"
 
 function exportCapricho(matches: CaprichoMatch[], filename: string) {
-  const rows = matches.map((m) => {
-    const p = m.patrimonioRow
-    const l = m.logisticaRow
-
-    const pSerial = Object.values(p)[1]
-    const lSerial = l ? Object.values(l)[3] : ""
-
-    const pDesc = findField(p, "descripcion", "descripción", "descr", "detalle")
-    const lTipo = l ? findField(l, "tipo") : ""
-    const lMarca = l ? findField(l, "marca") : ""
-    const lModelo = l ? findField(l, "modelo") : ""
-    const lComposed = [lTipo, lMarca, lModelo].filter(Boolean).join(" ")
-    const tipoBien = pDesc || lComposed
-
-    const pID = findField(p, "id patrimoni", "nro patrimonial", "numero patrimonial", "id bien")
-    const lID = l
-      ? findField(l, "id patrimoni", "nro patrimonial", "numero patrimonial", "id bien")
-      : ""
-
-    const pOC = findField(p, "orden de compra", "orden compra", "nro orden", "orden", " oc")
-    const lOC = l
-      ? findField(l, "orden de compra", "orden compra", "nro orden", "orden", " oc")
-      : ""
-
-    const pProv = findField(p, "proveedor", "prove", "vendor")
-    const lProv = l ? findField(l, "proveedor", "prove", "vendor") : ""
-
-    return {
-      "Tipo de bien": tipoBien,
-      "N° Serie (Patrimonio)": pSerial ? String(pSerial) : "",
-      "N° Serie (Logística)": lSerial ? String(lSerial) : "",
-      "ID Patrimonial (Patrimonio)": pID,
-      "ID Patrimonial (Logística)": lID,
-      "Orden de Compra (Patrimonio)": pOC,
-      "Orden de Compra (Logística)": lOC,
-      "Proveedor (Patrimonio)": pProv,
-      "Proveedor (Logística)": lProv,
-      "Parámetros coincidentes": m.matchCount,
-      "Campos": m.matchedFields.map((f) => f.name).join(", "),
-      "Descripción débil": m.weakDescription ? "Sí" : "No",
-    }
-  })
+  const rows = matches.map((m) => extractExportRow(m))
 
   const ws =
     rows.length > 0 ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([[]])

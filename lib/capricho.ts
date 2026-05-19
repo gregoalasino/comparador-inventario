@@ -172,6 +172,76 @@ function scoreMatch(
   return { count: matched.length, fields: matched }
 }
 
+export interface ExportRow {
+  "Tipo de bien": string
+  "N° Serie (Patrimonio)": string
+  "N° Serie (Logística)": string
+  "ID Patrimonial (Patrimonio)": string
+  "ID Patrimonial (Logística)": string
+  "Orden de Compra (Patrimonio)": string
+  "Orden de Compra (Logística)": string
+  "Proveedor (Patrimonio)": string
+  "Proveedor (Logística)": string
+  "Parámetros coincidentes": number
+  Campos: string
+  "Descripción débil": string
+}
+
+export function extractExportRow(m: CaprichoMatch): ExportRow {
+  const p = m.patrimonioRow
+  const l = m.logisticaRow
+
+  const pDesc = findField(p, "descripcion", "descripción", "descr", "detalle")
+  const lTipo = l ? findField(l, "tipo") : ""
+  const lMarca = l ? findField(l, "marca") : ""
+  const lModelo = l ? findField(l, "modelo") : ""
+  const lComposed = [lTipo, lMarca, lModelo].filter(Boolean).join(" ")
+
+  return {
+    "Tipo de bien": pDesc || lComposed,
+    "N° Serie (Patrimonio)": getPatrimonioSerial(p),
+    "N° Serie (Logística)": l ? getLogisticaSerial(l) : "",
+    "ID Patrimonial (Patrimonio)": findField(
+      p,
+      "id patrimoni",
+      "nro patrimonial",
+      "numero patrimonial",
+      "id bien",
+      "cod bien",
+      "codigo bien",
+      "id"
+    ),
+    "ID Patrimonial (Logística)": l
+      ? findField(l, "nro patrimonial", "id patrimoni", "numero patrimonial", "id bien")
+      : "",
+    "Orden de Compra (Patrimonio)": findField(
+      p,
+      "orden de compra",
+      "orden compra",
+      "nro orden",
+      "ord"
+    ),
+    "Orden de Compra (Logística)": l
+      ? findField(l, "ord", "orden de compra", "orden compra", "nro orden")
+      : "",
+    "Proveedor (Patrimonio)": findField(
+      p,
+      "razon social",
+      "razón social",
+      "razon",
+      "proveedor",
+      "prove",
+      "vendor"
+    ),
+    "Proveedor (Logística)": l
+      ? findField(l, "proveedor", "prove", "vendor", "razon social", "razón social")
+      : "",
+    "Parámetros coincidentes": m.matchCount,
+    Campos: m.matchedFields.map((f) => f.name).join(", "),
+    "Descripción débil": m.weakDescription ? "Sí" : "No",
+  }
+}
+
 export function buildCaprichoAnalysis(
   bajaRows: SheetRow[],
   logBajaRows: SheetRow[]
