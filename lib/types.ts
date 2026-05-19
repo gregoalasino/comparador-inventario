@@ -16,6 +16,28 @@ export interface ComparisonResult {
   totalLogistica: number
 }
 
+export interface MatchedField {
+  name: string
+  pValue: string
+  lValue: string
+}
+
+export interface CaprichoMatch {
+  id: string
+  patrimonioRow: SheetRow
+  logisticaRow: SheetRow | null
+  matchCount: number
+  matchedFields: MatchedField[]
+  weakDescription: boolean
+}
+
+export interface CaprichoResult {
+  alta: CaprichoMatch[]
+  media: CaprichoMatch[]
+  baja: CaprichoMatch[]
+  noCoinciden: CaprichoMatch[]
+}
+
 export interface AnalysisResult {
   totalComp: ComparisonResult
   vigComp: ComparisonResult
@@ -23,4 +45,5 @@ export interface AnalysisResult {
   ctrlRows: SheetRow[]
   totales: { patrimonio: number; logistica: number }
   sheetNames: string[]
+  capricho: CaprichoResult
 }
