@@ -61,10 +61,39 @@ function getLogisticaSerial(row: SheetRow): string {
   return val ? String(val).trim().toUpperCase() : ""
 }
 
-function lastN(str: string, n: number): string {
-  const clean = str.replace(/\s/g, "")
-  return clean.length >= n ? clean.slice(-n) : clean
+// Normaliza serie: quita separadores y aplica sustituciones de caracteres
+// que suelen confundirse al cargar manualmente (S↔5, O↔0, I/L↔1, Z↔2)
+function normalizeSerial(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/[\s\-_.]/g, "")
+    .replace(/O/g, "0")
+    .replace(/[IL]/g, "1")
+    .replace(/S/g, "5")
+    .replace(/Z/g, "2")
 }
+
+function serialsMatch(a: string, b: string): boolean {
+  const na = normalizeSerial(a)
+  const nb = normalizeSerial(b)
+  if (!na || !nb || na.length < 3 || nb.length < 3) return false
+
+  // Coincidencia exacta tras normalizar
+  if (na === nb) return true
+
+  // Uno es substring del otro (ej: un sistema carga prefijo "R" o sufijo extra)
+  if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true
+
+  // Últimos N chars (hasta 6) idénticos: para prefijos distintos de sistema a sistema
+  if (na.length >= 4 && nb.length >= 4) {
+    const n = Math.min(na.length, nb.length, 6)
+    if (n >= 4 && na.slice(-n) === nb.slice(-n)) return true
+  }
+
+  return false
+}
+
+const INVALID_SERIALS = new Set(["NO TIENE", "NOTIENE", "NULL", "S/N", "SN", "N/A", "NA"])
 
 export function isWeakDescription(desc: string): boolean {
   const clean = desc.trim()
@@ -80,13 +109,11 @@ function scoreMatch(
 ): { count: number; fields: MatchedField[] } {
   const matched: MatchedField[] = []
 
-  // 1. N° Serie — mínimo últimos 4 caracteres idénticos
+  // 1. N° Serie — comparación inteligente con sustituciones S/5, O/0, I/L/1, etc.
   const pSerial = getPatrimonioSerial(pRow)
   const lSerial = getLogisticaSerial(lRow)
-  if (pSerial.length >= 4 && lSerial.length >= 4) {
-    if (lastN(pSerial, 4) === lastN(lSerial, 4)) {
-      matched.push({ name: "N° Serie", pValue: pSerial, lValue: lSerial })
-    }
+  if (pSerial && lSerial && serialsMatch(pSerial, lSerial)) {
+    matched.push({ name: "N° Serie", pValue: pSerial, lValue: lSerial })
   }
 
   // 2. Orden de compra
@@ -172,7 +199,12 @@ export function buildCaprichoAnalysis(
     }
 
     const pSerial = getPatrimonioSerial(pRow)
-    const id = pSerial || pDesc.slice(0, 20) || `baja-${idx}`
+    const serialOk = pSerial && !INVALID_SERIALS.has(pSerial) && pSerial.length > 2
+    const id = serialOk
+      ? pSerial
+      : bestFields.length > 0
+        ? `Coincide en ${bestFields.map((f) => f.name).join(", ")}`
+        : pDesc.slice(0, 30) || `baja-${idx}`
 
     const match: CaprichoMatch = {
       id,

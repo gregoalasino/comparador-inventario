@@ -49,12 +49,14 @@ export function CompareTab({ comp, labelA, labelB, alertMsg, exportFilename }: C
           value={totalPatrimonio}
           label={labelA}
           color="amber"
+          info={`Total de filas en Patrimonio. Incluye ${pSinSerie.length} bien${pSinSerie.length !== 1 ? "es" : ""} sin número de serie válido que se muestran aparte.`}
         />
         <MetricCard
           icon={<Server size={16} />}
           value={totalLogistica}
           label={labelB}
           color="blue"
+          info={`Total de filas en Inventario (Logística). Incluye ${lSinSerie.length} bien${lSinSerie.length !== 1 ? "es" : ""} sin número de serie válido que se muestran aparte.`}
         />
         <MetricCard
           icon={<CheckCircle2 size={16} />}
@@ -62,12 +64,14 @@ export function CompareTab({ comp, labelA, labelB, alertMsg, exportFilename }: C
           label="Coinciden"
           sub={`${pct}% del patrimonio`}
           color="green"
+          info="Bienes cuyo número de serie aparece exactamente igual en ambos sistemas."
         />
         <MetricCard
           icon={<AlertCircle size={16} />}
           value={diferencias}
           label="Diferencias"
           color="red"
+          info={`Bienes que no tienen par en el otro sistema: ${soloPatrimonio.length} solo en patrimonio + ${soloLogistica.length} solo en logística = ${diferencias} en total.`}
         />
       </div>
 
