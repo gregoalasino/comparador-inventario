@@ -46,11 +46,17 @@ export function findField(row: SheetRow, ...keywords: string[]): string {
 }
 
 function getPatrimonioSerial(row: SheetRow): string {
-  const val = Object.values(row)[1]
-  return val ? String(val).trim().toUpperCase() : ""
+  // Col B (index 1) = Id SUAF; en BAJA suele ser "No tiene" → fallback a col C (Número de serie)
+  const vals = Object.values(row)
+  const suaf = vals[1] ? String(vals[1]).trim().toUpperCase() : ""
+  const invalid = ["NO TIENE", "NOTIENE", "NULL", "S/N", "SN", ""]
+  if (suaf && !invalid.includes(suaf)) return suaf
+  const nroSerie = vals[2] ? String(vals[2]).trim().toUpperCase() : ""
+  return nroSerie
 }
 
 function getLogisticaSerial(row: SheetRow): string {
+  // Col D (index 3) = Nro Serie en Inventario
   const val = Object.values(row)[3]
   return val ? String(val).trim().toUpperCase() : ""
 }
@@ -84,13 +90,17 @@ function scoreMatch(
   }
 
   // 2. Orden de compra
-  const pOC = findField(pRow, "orden de compra", "orden compra", "nro orden", "orden", " oc")
-  const lOC = findField(lRow, "orden de compra", "orden compra", "nro orden", "orden", " oc")
+  // Patrimonio: "Orden de compra" (col F) | Inventario: "Ord" (col K)
+  // "ord" como keyword matchea ambos: "Orden de compra".includes("ord") ✓ y "Ord".includes("ord") ✓
+  const pOC = findField(pRow, "orden de compra", "orden compra", "nro orden", "ord")
+  const lOC = findField(lRow, "ord", "orden de compra", "orden compra", "nro orden")
   if (pOC && lOC && fuzzyContains(pOC, lOC)) {
     matched.push({ name: "Orden de Compra", pValue: pOC, lValue: lOC })
   }
 
-  // 3. ID Patrimonial (ID Patrimonio y Nro Patrimonial Logistica)
+  // 3. ID Patrimonial
+  // Patrimonio: col A = "ID" | Inventario: col I = "Nro Patrimonial"
+  // Para Patrimonio se usa "id" como keyword de último recurso (matchea la col "ID")
   const pID = findField(
     pRow,
     "id patrimoni",
@@ -98,12 +108,13 @@ function scoreMatch(
     "numero patrimonial",
     "id bien",
     "cod bien",
-    "codigo bien"
+    "codigo bien",
+    "id"           // fallback: col "ID" de Patrimonio
   )
   const lID = findField(
     lRow,
+    "nro patrimonial",   // col I de Inventario
     "id patrimoni",
-    "nro patrimonial",
     "numero patrimonial",
     "id bien",
     "cod bien",
@@ -114,8 +125,9 @@ function scoreMatch(
   }
 
   // 4. Proveedor — coincidencia fuzzy y por palabras
-  const pProv = findField(pRow, "proveedor", "prove", "vendor", "suministrador")
-  const lProv = findField(lRow, "proveedor", "prove", "vendor", "suministrador")
+  // Patrimonio: "Razón social" | Inventario: "Proveedor"
+  const pProv = findField(pRow, "razon social", "razón social", "razon", "proveedor", "prove", "vendor")
+  const lProv = findField(lRow, "proveedor", "prove", "vendor", "razon social", "razón social")
   if (pProv && lProv && (fuzzyContains(pProv, lProv) || wordOverlap(pProv, lProv))) {
     matched.push({ name: "Proveedor", pValue: pProv, lValue: lProv })
   }
