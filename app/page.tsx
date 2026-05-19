@@ -9,7 +9,6 @@ import { DropZone } from "@/components/DropZone"
 import { SearchSection } from "@/components/SearchSection"
 import { CompareTab } from "@/components/CompareTab"
 import { ResumenTab } from "@/components/ResumenTab"
-import { ControlTab } from "@/components/ControlTab"
 import { CaprichoTab } from "@/components/CaprichoTab"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -85,7 +84,6 @@ export default function Home() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
-              <TabsTrigger value="control">Control</TabsTrigger>
               <TabsTrigger value="capricho">Capricho Memi</TabsTrigger>
             </TabsList>
             <Button
@@ -128,9 +126,6 @@ export default function Home() {
                 vigComp={analysis.vigComp}
                 bajComp={analysis.bajComp}
               />
-            </TabsContent>
-            <TabsContent value="control">
-              <ControlTab rows={analysis.ctrlRows} />
             </TabsContent>
             <TabsContent value="capricho">
               <CaprichoTab result={analysis.capricho} />

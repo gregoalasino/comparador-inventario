@@ -46,19 +46,54 @@ export function findField(row: SheetRow, ...keywords: string[]): string {
 }
 
 function getPatrimonioSerial(row: SheetRow): string {
-  const val = Object.values(row)[1]
-  return val ? String(val).trim().toUpperCase() : ""
+  // Col B (index 1) = Id SUAF; en BAJA suele ser "No tiene" → fallback a col C (Número de serie)
+  const vals = Object.values(row)
+  const suaf = vals[1] ? String(vals[1]).trim().toUpperCase() : ""
+  const invalid = ["NO TIENE", "NOTIENE", "NULL", "S/N", "SN", ""]
+  if (suaf && !invalid.includes(suaf)) return suaf
+  const nroSerie = vals[2] ? String(vals[2]).trim().toUpperCase() : ""
+  return nroSerie
 }
 
 function getLogisticaSerial(row: SheetRow): string {
+  // Col D (index 3) = Nro Serie en Inventario
   const val = Object.values(row)[3]
   return val ? String(val).trim().toUpperCase() : ""
 }
 
-function lastN(str: string, n: number): string {
-  const clean = str.replace(/\s/g, "")
-  return clean.length >= n ? clean.slice(-n) : clean
+// Normaliza serie: quita separadores y aplica sustituciones de caracteres
+// que suelen confundirse al cargar manualmente (S↔5, O↔0, I/L↔1, Z↔2)
+function normalizeSerial(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/[\s\-_.]/g, "")
+    .replace(/O/g, "0")
+    .replace(/[IL]/g, "1")
+    .replace(/S/g, "5")
+    .replace(/Z/g, "2")
 }
+
+function serialsMatch(a: string, b: string): boolean {
+  const na = normalizeSerial(a)
+  const nb = normalizeSerial(b)
+  if (!na || !nb || na.length < 3 || nb.length < 3) return false
+
+  // Coincidencia exacta tras normalizar
+  if (na === nb) return true
+
+  // Uno es substring del otro (ej: un sistema carga prefijo "R" o sufijo extra)
+  if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true
+
+  // Últimos N chars (hasta 6) idénticos: para prefijos distintos de sistema a sistema
+  if (na.length >= 4 && nb.length >= 4) {
+    const n = Math.min(na.length, nb.length, 6)
+    if (n >= 4 && na.slice(-n) === nb.slice(-n)) return true
+  }
+
+  return false
+}
+
+const INVALID_SERIALS = new Set(["NO TIENE", "NOTIENE", "NULL", "S/N", "SN", "N/A", "NA"])
 
 export function isWeakDescription(desc: string): boolean {
   const clean = desc.trim()
@@ -74,23 +109,25 @@ function scoreMatch(
 ): { count: number; fields: MatchedField[] } {
   const matched: MatchedField[] = []
 
-  // 1. N° Serie — mínimo últimos 4 caracteres idénticos
+  // 1. N° Serie — comparación inteligente con sustituciones S/5, O/0, I/L/1, etc.
   const pSerial = getPatrimonioSerial(pRow)
   const lSerial = getLogisticaSerial(lRow)
-  if (pSerial.length >= 4 && lSerial.length >= 4) {
-    if (lastN(pSerial, 4) === lastN(lSerial, 4)) {
-      matched.push({ name: "N° Serie", pValue: pSerial, lValue: lSerial })
-    }
+  if (pSerial && lSerial && serialsMatch(pSerial, lSerial)) {
+    matched.push({ name: "N° Serie", pValue: pSerial, lValue: lSerial })
   }
 
   // 2. Orden de compra
-  const pOC = findField(pRow, "orden de compra", "orden compra", "nro orden", "orden", " oc")
-  const lOC = findField(lRow, "orden de compra", "orden compra", "nro orden", "orden", " oc")
+  // Patrimonio: "Orden de compra" (col F) | Inventario: "Ord" (col K)
+  // "ord" como keyword matchea ambos: "Orden de compra".includes("ord") ✓ y "Ord".includes("ord") ✓
+  const pOC = findField(pRow, "orden de compra", "orden compra", "nro orden", "ord")
+  const lOC = findField(lRow, "ord", "orden de compra", "orden compra", "nro orden")
   if (pOC && lOC && fuzzyContains(pOC, lOC)) {
     matched.push({ name: "Orden de Compra", pValue: pOC, lValue: lOC })
   }
 
-  // 3. ID Patrimonial (ID Patrimonio y Nro Patrimonial Logistica)
+  // 3. ID Patrimonial
+  // Patrimonio: col A = "ID" | Inventario: col I = "Nro Patrimonial"
+  // Para Patrimonio se usa "id" como keyword de último recurso (matchea la col "ID")
   const pID = findField(
     pRow,
     "id patrimoni",
@@ -98,12 +135,13 @@ function scoreMatch(
     "numero patrimonial",
     "id bien",
     "cod bien",
-    "codigo bien"
+    "codigo bien",
+    "id"           // fallback: col "ID" de Patrimonio
   )
   const lID = findField(
     lRow,
+    "nro patrimonial",   // col I de Inventario
     "id patrimoni",
-    "nro patrimonial",
     "numero patrimonial",
     "id bien",
     "cod bien",
@@ -114,8 +152,9 @@ function scoreMatch(
   }
 
   // 4. Proveedor — coincidencia fuzzy y por palabras
-  const pProv = findField(pRow, "proveedor", "prove", "vendor", "suministrador")
-  const lProv = findField(lRow, "proveedor", "prove", "vendor", "suministrador")
+  // Patrimonio: "Razón social" | Inventario: "Proveedor"
+  const pProv = findField(pRow, "razon social", "razón social", "razon", "proveedor", "prove", "vendor")
+  const lProv = findField(lRow, "proveedor", "prove", "vendor", "razon social", "razón social")
   if (pProv && lProv && (fuzzyContains(pProv, lProv) || wordOverlap(pProv, lProv))) {
     matched.push({ name: "Proveedor", pValue: pProv, lValue: lProv })
   }
@@ -131,6 +170,76 @@ function scoreMatch(
   }
 
   return { count: matched.length, fields: matched }
+}
+
+export interface ExportRow {
+  "Tipo de bien": string
+  "N° Serie (Patrimonio)": string
+  "N° Serie (Logística)": string
+  "ID Patrimonial (Patrimonio)": string
+  "ID Patrimonial (Logística)": string
+  "Orden de Compra (Patrimonio)": string
+  "Orden de Compra (Logística)": string
+  "Proveedor (Patrimonio)": string
+  "Proveedor (Logística)": string
+  "Parámetros coincidentes": number
+  Campos: string
+  "Descripción débil": string
+}
+
+export function extractExportRow(m: CaprichoMatch): ExportRow {
+  const p = m.patrimonioRow
+  const l = m.logisticaRow
+
+  const pDesc = findField(p, "descripcion", "descripción", "descr", "detalle")
+  const lTipo = l ? findField(l, "tipo") : ""
+  const lMarca = l ? findField(l, "marca") : ""
+  const lModelo = l ? findField(l, "modelo") : ""
+  const lComposed = [lTipo, lMarca, lModelo].filter(Boolean).join(" ")
+
+  return {
+    "Tipo de bien": pDesc || lComposed,
+    "N° Serie (Patrimonio)": getPatrimonioSerial(p),
+    "N° Serie (Logística)": l ? getLogisticaSerial(l) : "",
+    "ID Patrimonial (Patrimonio)": findField(
+      p,
+      "id patrimoni",
+      "nro patrimonial",
+      "numero patrimonial",
+      "id bien",
+      "cod bien",
+      "codigo bien",
+      "id"
+    ),
+    "ID Patrimonial (Logística)": l
+      ? findField(l, "nro patrimonial", "id patrimoni", "numero patrimonial", "id bien")
+      : "",
+    "Orden de Compra (Patrimonio)": findField(
+      p,
+      "orden de compra",
+      "orden compra",
+      "nro orden",
+      "ord"
+    ),
+    "Orden de Compra (Logística)": l
+      ? findField(l, "ord", "orden de compra", "orden compra", "nro orden")
+      : "",
+    "Proveedor (Patrimonio)": findField(
+      p,
+      "razon social",
+      "razón social",
+      "razon",
+      "proveedor",
+      "prove",
+      "vendor"
+    ),
+    "Proveedor (Logística)": l
+      ? findField(l, "proveedor", "prove", "vendor", "razon social", "razón social")
+      : "",
+    "Parámetros coincidentes": m.matchCount,
+    Campos: m.matchedFields.map((f) => f.name).join(", "),
+    "Descripción débil": m.weakDescription ? "Sí" : "No",
+  }
 }
 
 export function buildCaprichoAnalysis(
@@ -160,7 +269,12 @@ export function buildCaprichoAnalysis(
     }
 
     const pSerial = getPatrimonioSerial(pRow)
-    const id = pSerial || pDesc.slice(0, 20) || `baja-${idx}`
+    const serialOk = pSerial && !INVALID_SERIALS.has(pSerial) && pSerial.length > 2
+    const id = serialOk
+      ? pSerial
+      : bestFields.length > 0
+        ? `Coincide en ${bestFields.map((f) => f.name).join(", ")}`
+        : pDesc.slice(0, 30) || `baja-${idx}`
 
     const match: CaprichoMatch = {
       id,
