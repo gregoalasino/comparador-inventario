@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx"
 import { buildComparison, isLogisticaBaja } from "./comparator"
+import { buildCaprichoAnalysis } from "./capricho"
 import { SheetRow, AnalysisResult } from "./types"
 
 export function parseExcel(buffer: ArrayBuffer): Record<string, SheetRow[]> {
@@ -31,6 +32,7 @@ export function buildAnalysis(data: Record<string, SheetRow[]>): AnalysisResult 
   const totalComp = buildComparison([...vigentes, ...bajas], inventario)
   const vigComp = buildComparison(vigentes, logVigentes)
   const bajComp = buildComparison(bajas, logBajas)
+  const capricho = buildCaprichoAnalysis(bajas, logBajas)
 
   return {
     totalComp,
@@ -42,5 +44,6 @@ export function buildAnalysis(data: Record<string, SheetRow[]>): AnalysisResult 
       logistica: inventario.length,
     },
     sheetNames,
+    capricho,
   }
 }

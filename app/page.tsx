@@ -10,6 +10,7 @@ import { SearchSection } from "@/components/SearchSection"
 import { CompareTab } from "@/components/CompareTab"
 import { ResumenTab } from "@/components/ResumenTab"
 import { ControlTab } from "@/components/ControlTab"
+import { CaprichoTab } from "@/components/CaprichoTab"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -85,6 +86,7 @@ export default function Home() {
               </TabsTrigger>
               <TabsTrigger value="resumen">Resumen</TabsTrigger>
               <TabsTrigger value="control">Control</TabsTrigger>
+              <TabsTrigger value="capricho">Capricho Memi</TabsTrigger>
             </TabsList>
             <Button
               variant="outline"
@@ -129,6 +131,9 @@ export default function Home() {
             </TabsContent>
             <TabsContent value="control">
               <ControlTab rows={analysis.ctrlRows} />
+            </TabsContent>
+            <TabsContent value="capricho">
+              <CaprichoTab result={analysis.capricho} />
             </TabsContent>
           </Tabs>
         </div>
