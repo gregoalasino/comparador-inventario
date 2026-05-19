@@ -31,10 +31,15 @@ function wordOverlap(a: unknown, b: unknown): boolean {
   return wb.some((w) => wa.has(w))
 }
 
+function noAccents(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "")
+}
+
 export function findField(row: SheetRow, ...keywords: string[]): string {
   const keys = Object.keys(row)
   for (const kw of keywords) {
-    const key = keys.find((k) => k.toLowerCase().includes(kw.toLowerCase()))
+    const kwNorm = noAccents(kw.toLowerCase())
+    const key = keys.find((k) => noAccents(k.toLowerCase()).includes(kwNorm))
     if (key !== undefined) {
       const val = row[key]
       if (val !== null && val !== undefined && String(val).trim() !== "") {
