@@ -24,6 +24,7 @@ export interface MatchedField {
 
 export interface CaprichoMatch {
   id: string
+  source: "BAJA" | "VIGENTE"
   patrimonioRow: SheetRow
   logisticaRow: SheetRow | null
   matchCount: number
