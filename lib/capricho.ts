@@ -178,6 +178,7 @@ function scoreMatch(
 }
 
 export interface ExportRow {
+  "Origen (Patrimonio)": string
   "Tipo de bien": string
   "N° Serie (Patrimonio)": string
   "N° Serie (Logística)": string
@@ -203,6 +204,7 @@ export function extractExportRow(m: CaprichoMatch): ExportRow {
   const lComposed = [lTipo, lMarca, lModelo].filter(Boolean).join(" ")
 
   return {
+    "Origen (Patrimonio)": m.source,
     "Tipo de bien": pDesc || lComposed,
     "N° Serie (Patrimonio)": getPatrimonioSerial(p),
     "N° Serie (Logística)": l ? getLogisticaSerial(l) : "",
@@ -247,16 +249,18 @@ export function extractExportRow(m: CaprichoMatch): ExportRow {
   }
 }
 
+export type TaggedPatrimonioRow = { row: SheetRow; source: "BAJA" | "VIGENTE" }
+
 export function buildCaprichoAnalysis(
-  bajaRows: SheetRow[],
-  logBajaRows: SheetRow[]
+  taggedRows: TaggedPatrimonioRow[],
+  logisticaRows: SheetRow[]
 ): CaprichoResult {
   const alta: CaprichoMatch[] = []
   const media: CaprichoMatch[] = []
   const baja: CaprichoMatch[] = []
   const noCoinciden: CaprichoMatch[] = []
 
-  bajaRows.forEach((pRow, idx) => {
+  taggedRows.forEach(({ row: pRow, source }, idx) => {
     const pDesc = findField(pRow, "descripcion", "descripción", "descr", "detalle")
     const weak = isWeakDescription(pDesc)
 
@@ -264,7 +268,7 @@ export function buildCaprichoAnalysis(
     let bestLRow: SheetRow | null = null
     let bestFields: MatchedField[] = []
 
-    for (const lRow of logBajaRows) {
+    for (const lRow of logisticaRows) {
       const { count, fields } = scoreMatch(pRow, lRow)
       if (count > bestScore) {
         bestScore = count
@@ -279,10 +283,11 @@ export function buildCaprichoAnalysis(
       ? pSerial
       : bestFields.length > 0
         ? `Coincide en ${bestFields.map((f) => f.name).join(", ")}`
-        : pDesc.slice(0, 30) || `baja-${idx}`
+        : pDesc.slice(0, 30) || `item-${idx}`
 
     const match: CaprichoMatch = {
       id,
+      source,
       patrimonioRow: pRow,
       logisticaRow: bestLRow,
       matchCount: bestScore,

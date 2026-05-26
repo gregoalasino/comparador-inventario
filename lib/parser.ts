@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx"
 import { buildComparison, isLogisticaBaja } from "./comparator"
-import { buildCaprichoAnalysis } from "./capricho"
+import { buildCaprichoAnalysis, TaggedPatrimonioRow } from "./capricho"
 import { SheetRow, AnalysisResult } from "./types"
 
 export function parseExcel(buffer: ArrayBuffer): Record<string, SheetRow[]> {
@@ -32,7 +32,12 @@ export function buildAnalysis(data: Record<string, SheetRow[]>): AnalysisResult 
   const totalComp = buildComparison([...vigentes, ...bajas], inventario)
   const vigComp = buildComparison(vigentes, logVigentes)
   const bajComp = buildComparison(bajas, logBajas)
-  const capricho = buildCaprichoAnalysis(bajas, logBajas)
+  // Capricho analiza TODOS los bienes de Patrimonio (vigentes + bajas) contra TODO el inventario
+  const taggedPatrimonio: TaggedPatrimonioRow[] = [
+    ...vigentes.map((row) => ({ row, source: "VIGENTE" as const })),
+    ...bajas.map((row) => ({ row, source: "BAJA" as const })),
+  ]
+  const capricho = buildCaprichoAnalysis(taggedPatrimonio, inventario)
 
   return {
     totalComp,

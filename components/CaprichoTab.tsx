@@ -114,9 +114,12 @@ export function CaprichoTab({ result }: CaprichoTabProps) {
   return (
     <div className="space-y-5">
       <div className="text-sm text-muted-foreground">
-        Comparación avanzada entre <strong>Bajas de Patrimonio</strong> y{" "}
-        <strong>Bajas Definitivas de Logística</strong> usando N° serie (últimos 4 chars),
-        orden de compra, ID patrimonial, proveedor y descripción.
+        Comparación avanzada de <strong>todos los bienes de Patrimonio</strong>{" "}
+        (vigentes y bajas) contra <strong>todo el Inventario</strong>, usando N° serie,
+        orden de compra, ID patrimonial, proveedor y descripción. Cada bien indica si
+        proviene de{" "}
+        <span className="font-medium" style={{ color: "#185FA5" }}>VIGENTE</span> o{" "}
+        <span className="font-medium" style={{ color: "#BA7517" }}>BAJA</span>.
         {total > 0 && (
           <span className="ml-1">
             Se analizaron <strong>{total}</strong> bienes de patrimonio.

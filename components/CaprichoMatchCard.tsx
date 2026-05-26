@@ -68,6 +68,16 @@ export function CaprichoMatchCard({ match }: { match: CaprichoMatch }) {
         onClick={() => setOpen((o) => !o)}
       >
         <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0"
+            style={
+              match.source === "BAJA"
+                ? { backgroundColor: "#FAEEDA", color: "#BA7517" }
+                : { backgroundColor: "#E6F1FB", color: "#185FA5" }
+            }
+          >
+            {match.source}
+          </span>
           <span className="font-mono text-sm font-medium truncate">{id}</span>
           {weakDescription && (
             <span
