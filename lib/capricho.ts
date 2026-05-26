@@ -21,6 +21,8 @@ function fuzzyContains(a: unknown, b: unknown): boolean {
   const na = normalize(a)
   const nb = normalize(b)
   if (!na || !nb) return false
+  // Evitar falsos positivos: un string muy corto (ej: "0") es substring de casi cualquier cosa
+  if (Math.min(na.length, nb.length) < 3) return false
   return na.includes(nb) || nb.includes(na)
 }
 
@@ -126,7 +128,9 @@ function scoreMatch(
   // "ord" como keyword matchea ambos: "Orden de compra".includes("ord") ✓ y "Ord".includes("ord") ✓
   const pOC = findField(pRow, "orden de compra", "orden compra", "nro orden", "ord")
   const lOC = findField(lRow, "ord", "orden de compra", "orden compra", "nro orden")
-  if (pOC && lOC && fuzzyContains(pOC, lOC)) {
+  // "0" significa "sin orden de compra" en Patrimonio → no es un match válido
+  const ocValida = (v: string) => v !== "0" && v !== ""
+  if (pOC && lOC && ocValida(pOC) && ocValida(lOC) && fuzzyContains(pOC, lOC)) {
     matched.push({ name: "Orden de Compra", pValue: pOC, lValue: lOC })
   }
 
